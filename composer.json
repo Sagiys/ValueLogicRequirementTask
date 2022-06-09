@@ -1,0 +1,13 @@
+{
+    "name": "sagiys/value-logic",
+    "type": "project",
+    "require": {
+        "spatie/ray": "^1.34"
+    },
+    "authors": [
+        {
+            "name": "Sagiys",
+            "email": "hallmann.adam00@gmail.com"
+        }
+    ]
+}
