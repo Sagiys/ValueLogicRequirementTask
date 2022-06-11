@@ -1,14 +1,25 @@
 {
-    "name": "sagiys/value-logic",
-    "type": "project",
-    "require": {
-        "spatie/ray": "^1.34",
-      "ext-readline": "*"
-    },
-    "authors": [
-        {
-            "name": "Sagiys",
-            "email": "hallmann.adam00@gmail.com"
-        }
+  "name": "sagiys/value-logic",
+  "type": "project",
+  "authors": [
+    {
+      "name": "Sagiys",
+      "email": "hallmann.adam00@gmail.com"
+    }
+  ],
+  "autoload": {
+    "classmap": [
+      "src/"
     ]
+  },
+  "require": {
+    "spatie/ray": "^1.34",
+    "ext-readline": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.5"
+  },
+  "scripts": {
+    "test": "vendor/bin/phpunit --testdox tests"
+  }
 }
