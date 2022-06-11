@@ -12,10 +12,9 @@ class FilesMixer
         public array $config
     )
     {
-        ray()->clearAll();
     }
 
-    public function build(): array
+    public function build(): self
     {
         $base = $this->dot($this->source);
 
@@ -23,9 +22,18 @@ class FilesMixer
 
         $cross = [];
 
+        //ensure that config array has only arrays as values
+        foreach ($options as $key => $values) {
+            if (!is_array($values)) {
+                $options[$key] = [$values];
+            }
+        }
+
         $totalNumberOfCombinations = 1;
+        // array with sizes of config arrays with dotted keys for access
         $breaks = [];
         foreach ($options as $key => $values) {
+            ray($values);
             $countOfValues = count($values);
             $breaks [$key] = $countOfValues;
             $totalNumberOfCombinations *= $countOfValues;
@@ -40,30 +48,64 @@ class FilesMixer
         }
 
         foreach ($cross as $crossedOption) {
-            $this->result [] = array_merge($base, $crossedOption);
+            $this->result [] = $this->undot(array_merge($base, $crossedOption));
         }
 
+        return $this;
+    }
+
+    public function toArray(): array
+    {
         return $this->result;
     }
 
-    // "Borrowed" from Official Laravel Repository with my ugly twist added
+    public function toFiles()
+    {
+        $this->ensureEmptyBuildDirectoryExists();
+
+        foreach ($this->result as $key => $result) {
+            $filename = $key + 1;
+            file_put_contents("build/{$filename}.json", json_encode($result));
+        }
+    }
+
+    private function ensureEmptyBuildDirectoryExists()
+    {
+        $path = realpath('build');
+
+        if ($path === false) {
+            mkdir('build', 0755);
+        }
+
+        array_map('unlink', glob("build/*.*"));
+    }
+
+    // "Borrowed" from Official Laravel Repository
     private function dot($array, $prepend = '', $ignoreIfLastLayerIsArray = false)
     {
         $results = [];
 
         foreach ($array as $key => $value) {
-            $areAllValuesAnArray = false;
+            // this ugly check ic creation of mine
+            // it checks if all elements of array aren't arrays
+            // basically if it's second to last element for example: threshold => [1,2,3]
+            // instead of making it like this:
+            // threshold.0 => 1
+            // threshold.1 => 2
+            // threshold.2 => 3
+            // it leaves array without change
+            $isAnyValueAnArray = false;
             if ($ignoreIfLastLayerIsArray) {
                 if (is_array($value) && !empty($value)) {
                     foreach ($value as $items) {
                         if (is_array($items)) {
-                            $areAllValuesAnArray = true;
+                            $isAnyValueAnArray = true;
                             break;
                         }
                     }
                 }
             }
-            if (is_array($value) && !empty($value) && (!$ignoreIfLastLayerIsArray || $areAllValuesAnArray)) {
+            if (is_array($value) && !empty($value) && (!$ignoreIfLastLayerIsArray || $isAnyValueAnArray)) {
                 $results = array_merge($results, $this->dot($value, $prepend . $key . '.', $ignoreIfLastLayerIsArray));
             } else {
                 $results[$prepend . $key] = $value;
@@ -74,7 +116,6 @@ class FilesMixer
     }
 
     // "borrowed" from https://github.com/DivineOmega/array_undot
-
     private function undot(array $dotNotationArray)
     {
         $array = [];
@@ -106,37 +147,21 @@ class FilesMixer
 
         return $array;
     }
-
 }
 
+$baseFileName = readline('Enter filename of base .json file (default: base.json): ');
+$configFileName = readline('Enter filename of config .json file (default: config.json): ');
 
-$source = [
-    'strategy_index' => 1,
-    'details' => [
-        'threshold' => 0.5,
-        'buffer_size' => 6
-    ],
-    'model' => [
-        'type' => "A",
-        'unit' => 5,
-        'max_age' => 5,
-        'calculation_cost' => 0.3
-    ]
-];
+$baseFileName = $baseFileName === '' ? 'base.json' : $baseFileName;
+$configFileName = $configFileName === '' ? 'config.json' : $configFileName;
 
-$config = [
-    'strategy_index' => [1, 2, 3, 4, 5],
-    'details' => [
-        'threshold' => [0.1, 0.2],
-    ],
-    'model' => [
-        'max_age' => [5, 10, 15, 20],
-        'type' => ["A", 'B', 'C'],
-    ],
-];
+$source = json_decode(file_get_contents("input/{$baseFileName}"), true, 512, JSON_THROW_ON_ERROR);
+$config = json_decode(file_get_contents("input/{$configFileName}"), true, 512, JSON_THROW_ON_ERROR);
 
 $fileMixer = new FilesMixer($source, $config);
-$output = $fileMixer->build();
+$builtConfigs = $fileMixer->build();
 
-ray(count($output));
+$output = $builtConfigs->toArray();
 ray($output);
+//file generation
+$builtConfigs->toFiles();
